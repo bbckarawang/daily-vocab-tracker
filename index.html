@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Vocab Tracker - Adult Learners</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo / App Name -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+                        <i class="fa-solid fa-book-bookmark text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-slate-900 text-lg leading-tight">DailyVocab</h1>
+                        <p class="text-xs text-slate-500 font-medium">1 Word a Day Challenge</p>
+                    </div>
+                </div>
+
+                <!-- Right Menu & Auth Controls -->
+                <div class="flex items-center space-x-3">
+                    <!-- Config Button -->
+                    <button id="configBtn" onclick="openConfigModal()" class="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-plug text-slate-500"></i>
+                        <span class="hidden sm:inline">Backend Setup</span>
+                    </button>
+
+                    <!-- User Profile / Auth State -->
+                    <div id="authSection" class="flex items-center gap-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Offline / Mock Mode Banner -->
+        <div id="connectionBanner" class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg"></i>
+                <div>
+                    <span class="font-semibold">Demo / Local Mode Active:</span> Data is stored in your browser's Local Storage. 
+                    <button onclick="openConfigModal()" class="underline font-medium hover:text-amber-900">Connect to Google Sheets</button> for real class tracking.
+                </div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-amber-500 hover:text-amber-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Auth Guard Notice (When Not Logged In) -->
+        <div id="loggedOutView" class="max-w-md mx-auto my-12 bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
+            <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-user-lock"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 mb-2">Welcome Students!</h2>
+            <p class="text-slate-600 text-sm mb-6">Please sign in or create an account to start tracking your daily vocabulary entry.</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="openAuthModal('login')" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition shadow-sm">
+                    Log In
+                </button>
+                <button onclick="openAuthModal('signup')" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-xl transition">
+                    Sign Up
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard View (Visible when Logged In) -->
+        <div id="loggedInView" class="hidden space-y-8">
+            
+            <!-- Top Dashboard Stats Header -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <!-- Streak Card -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-fire-flame-curved"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">Current Streak</div>
+                        <div class="flex items-baseline gap-2">
+                            <span id="streakCount" class="text-2xl font-bold text-slate-900">0</span>
+                            <span class="text-xs text-slate-500 font-medium">Days Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Words Card -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-spell-check"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">Vocabulary Bank</div>
+                        <div class="flex items-baseline gap-2">
+                            <span id="totalWordsCount" class="text-2xl font-bold text-slate-900">0</span>
+                            <span class="text-xs text-slate-500 font-medium">Words Learnt</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Status Card -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div id="todayStatusIcon" class="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">Today's Submission</div>
+                        <div id="todayStatusText" class="text-sm font-semibold text-slate-700">Checking...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area: Submission Form + Consistency Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Left Column: Submission Form (5 Cols) -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
+                        <div class="flex justify-between items-center mb-5">
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-pen-to-square text-indigo-600"></i>
+                                Today's Entry
+                            </h2>
+                            <span id="todayDateLabel" class="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md"></span>
+                        </div>
+
+                        <!-- Already Submitted Overlay/Message (Hidden by default) -->
+                        <div id="submittedLockedState" class="hidden p-6 text-center bg-indigo-50/70 border border-indigo-100 rounded-xl my-4">
+                            <div class="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-3 text-xl shadow-md shadow-emerald-200">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-base">You've Completed Today!</h3>
+                            <p class="text-xs text-slate-600 mt-1 max-w-xs mx-auto">Great job maintaining your consistency! Come back tomorrow at 00:00 to log your next word.</p>
+                        </div>
+
+                        <!-- Form Input -->
+                        <form id="vocabForm" onsubmit="handleVocabSubmit(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Vocabulary (1 Word)</label>
+                                <input type="text" id="vocabInput" required placeholder="e.g., Diligent, Resilience" 
+                                    class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Category</label>
+                                <select id="categoryInput" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition bg-white">
+                                    <option value="Daily Routine">☀️ Daily Routine</option>
+                                    <option value="Hobby & Interests">⚽ Hobby & Interests</option>
+                                    <option value="Work & Career">💼 Work & Career</option>
+                                    <option value="Travel & Food">✈️ Travel & Food</option>
+                                    <option value="Feelings & Mind">🧠 Feelings & Mind</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Context / Simple Sentence</label>
+                                <textarea id="sentenceInput" rows="3" required placeholder="e.g., I try to be diligent in studying English every day." 
+                                    class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition custom-scrollbar"></textarea>
+                            </div>
+
+                            <button type="submit" id="submitVocabBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition shadow-md shadow-indigo-100 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-paper-plane"></i> Submit Vocabulary
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Teacher Notes / Feedback Box -->
+                    <div class="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-sm">
+                        <div class="flex items-center gap-2 text-indigo-300 font-semibold text-xs tracking-wider uppercase mb-2">
+                            <i class="fa-solid fa-comment-dots text-indigo-400"></i> Teacher Feedback
+                        </div>
+                        <p id="teacherFeedbackText" class="text-sm text-slate-300 italic">
+                            "Keep up the great effort! Make sure your example sentence is grounded in your daily life."
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right Column: Consistency Calendar & Vocabulary History (7 Cols) -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <!-- Monthly Consistency Heatmap Grid -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-base">Monthly Consistency Tracker</h3>
+                                <p class="text-xs text-slate-500">Track your daily streak for the current month</p>
+                            </div>
+                            <!-- Legend -->
+                            <div class="flex items-center gap-3 text-xs">
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> On-time</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Late</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-200"></span> Missed</span>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Grid -->
+                        <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-center pt-2">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Personal Dictionary List -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-base">My Vocabulary History</h3>
+                                <p class="text-xs text-slate-500">Review your past submissions anytime</p>
+                            </div>
+
+                            <!-- Search & Filter Controls -->
+                            <div class="flex items-center gap-2">
+                                <div class="relative flex-grow sm:flex-grow-0">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                    <input type="text" id="searchInput" oninput="renderHistoryList()" placeholder="Search word..." 
+                                        class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-36">
+                                </div>
+                                <select id="filterCategory" onchange="renderHistoryList()" class="px-2 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none bg-white">
+                                    <option value="ALL">All Categories</option>
+                                    <option value="Daily Routine">Daily Routine</option>
+                                    <option value="Hobby & Interests">Hobby</option>
+                                    <option value="Work & Career">Work</option>
+                                    <option value="Travel & Food">Travel</option>
+                                    <option value="Feelings & Mind">Feelings</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Vocabulary Cards List -->
+                        <div id="historyList" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-1">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+        <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>Designed for Adult Learners • Consistency Over Intensity</p>
+        </div>
+    </footer>
+
+    <!-- MODAL: Auth (Login / Sign Up) -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+            <!-- Modal Tabs -->
+            <div class="flex border-b border-slate-100">
+                <button id="tabLogin" onclick="switchAuthTab('login')" class="flex-1 py-3.5 text-center font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition">
+                    Log In
+                </button>
+                <button id="tabSignup" onclick="switchAuthTab('signup')" class="flex-1 py-3.5 text-center font-semibold text-sm border-b-2 border-transparent text-slate-400 transition hover:text-slate-600">
+                    Sign Up
+                </button>
+            </div>
+
+            <div class="p-6">
+                <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                    <input type="hidden" id="authMode" value="login">
+
+                    <div id="nameField" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Full Name</label>
+                        <input type="text" id="authName" placeholder="John Doe" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email Address</label>
+                        <input type="email" id="authEmail" required placeholder="student@example.com" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Password</label>
+                        <input type="password" id="authPassword" required placeholder="••••••••" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600">
+                    </div>
+
+                    <div id="authError" class="hidden p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100"></div>
+
+                    <div class="pt-2 flex justify-end gap-2">
+                        <button type="button" onclick="closeAuthModal()" class="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                            Cancel
+                        </button>
+                        <button type="submit" id="authSubmitBtn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow-md shadow-indigo-100">
+                            Log In
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Google Apps Script Backend Setup Instructions & URL Config -->
+    <div id="configModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-gears text-indigo-600"></i> Google Sheets Backend Config
+                </h3>
+                <button onclick="closeConfigModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Content Area (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-5 text-sm custom-scrollbar">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Google Apps Script Web App URL</label>
+                    <input type="url" id="webAppUrlInput" placeholder="https://script.google.com/macros/s/.../exec" 
+                        class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600">
+                    <p class="text-xs text-slate-500 mt-1">Leave empty to use <strong>Local Storage / Demo Mode</strong>.</p>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4">
+                    <h4 class="font-bold text-slate-800 text-sm mb-2">How to Setup Google Sheets Backend (3 Steps):</h4>
+                    <ol class="list-decimal list-inside space-y-2 text-xs text-slate-600 leading-relaxed">
+                        <li>Create a new Google Sheet. Create two tabs: named <code class="bg-slate-100 px-1 py-0.5 rounded font-mono text-indigo-600">Users</code> and <code class="bg-slate-100 px-1 py-0.5 rounded font-mono text-indigo-600">Submissions</code>.</li>
+                        <li>Go to <strong>Extensions &gt; Apps Script</strong> and paste the Google Apps Script code below.</li>
+                        <li>Click <strong>Deploy &gt; New Deployment</strong>, set type to <em>Web App</em>, execute as <em>Me</em>, and access to <em>Anyone</em>. Copy the Web App URL and paste it above!</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-slate-700">Google Apps Script Code (Code.gs):</span>
+                        <button onclick="copyGasCode()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <i class="fa-regular fa-copy"></i> Copy Code
+                        </button>
+                    </div>
+                    <pre id="gasCodeText" class="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto max-h-48 custom-scrollbar">
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var action = data.action;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    if (action === "signup") {
+      var userSheet = ss.getSheetByName("Users");
+      userSheet.appendRow([data.email, data.password, data.name, new Date()]);
+      return responseJSON({ status: "success", user: { email: data.email, name: data.name } });
+    } 
+    
+    if (action === "login") {
+      var userSheet = ss.getSheetByName("Users");
+      var users = userSheet.getDataRange().getValues();
+      for (var i = 1; i < users.length; i++) {
+        if (users[i][0] === data.email && users[i][1] === data.password) {
+          return responseJSON({ status: "success", user: { email: users[i][0], name: users[i][2] } });
+        }
+      }
+      return responseJSON({ status: "error", message: "Invalid email or password" });
+    }
+    
+    if (action === "addVocab") {
+      var subSheet = ss.getSheetByName("Submissions");
+      subSheet.appendRow([
+        data.userEmail, 
+        data.date, 
+        data.vocab, 
+        data.category, 
+        data.sentence, 
+        data.isLate ? "LATE" : "ON_TIME", 
+        new Date()
+      ]);
+      return responseJSON({ status: "success" });
+    }
+    
+    if (action === "getData") {
+      var subSheet = ss.getSheetByName("Submissions");
+      var rows = subSheet.getDataRange().getValues();
+      var userVocabs = [];
+      for (var j = 1; j < rows.length; j++) {
+        if (rows[j][0] === data.userEmail) {
+          userVocabs.push({
+            date: rows[j][1],
+            vocab: rows[j][2],
+            category: rows[j][3],
+            sentence: rows[j][4],
+            status: rows[j][5]
+          });
+        }
+      }
+      return responseJSON({ status: "success", vocabs: userVocabs });
+    }
+
+  } catch(err) {
+    return responseJSON({ status: "error", message: err.toString() });
+  }
+}
+
+function responseJSON(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+</pre>
+                </div>
+            </div>
+
+            <!-- Footer Controls -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+                <button onclick="closeConfigModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition">
+                    Close
+                </button>
+                <button onclick="saveBackendConfig()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow-md shadow-indigo-100">
+                    Save Config
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic Javascript -->
+    <script>
+        // State Management
+        let currentUser = JSON.parse(localStorage.getItem('vocab_user')) || null;
+        let webAppUrl = localStorage.getItem('vocab_web_app_url') || '';
+        let localData = JSON.parse(localStorage.getItem('vocab_local_db')) || { users: [], submissions: [] };
+
+        // Helper: Get formatted ISO Date String (YYYY-MM-DD)
+        function getFormattedDate(dateObj = new Date()) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Initialize Application
+        window.onload = function() {
+            document.getElementById('todayDateLabel').innerText = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            if (webAppUrl) {
+                document.getElementById('webAppUrlInput').value = webAppUrl;
+                document.getElementById('connectionBanner').classList.add('hidden');
+            }
+            updateAuthUI();
+        };
+
+        // UI Auth Switcher
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
+            const loggedInView = document.getElementById('loggedInView');
+            const loggedOutView = document.getElementById('loggedOutView');
+
+            if (currentUser) {
+                authSection.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
+                            ${currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'S'}
+                        </div>
+                        <span class="text-xs font-semibold text-slate-700 hidden sm:inline">${currentUser.name || currentUser.email}</span>
+                        <button onclick="handleLogout()" class="ml-2 text-slate-400 hover:text-red-600 transition text-xs" title="Log Out">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                `;
+                loggedOutView.classList.add('hidden');
+                loggedInView.classList.remove('hidden');
+                loadUserData();
+            } else {
+                authSection.innerHTML = `
+                    <button onclick="openAuthModal('login')" class="px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition">Log In</button>
+                    <button onclick="openAuthModal('signup')" class="px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shadow-sm">Sign Up</button>
+                `;
+                loggedInView.classList.add('hidden');
+                loggedOutView.classList.remove('hidden');
+            }
+        }
+
+        // Modal Handlers
+        function openAuthModal(mode = 'login') {
+            document.getElementById('authModal').classList.remove('hidden');
+            switchAuthTab(mode);
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+            document.getElementById('authError').classList.add('hidden');
+        }
+
+        function switchAuthTab(mode) {
+            document.getElementById('authMode').value = mode;
+            const tabLogin = document.getElementById('tabLogin');
+            const tabSignup = document.getElementById('tabSignup');
+            const nameField = document.getElementById('nameField');
+            const submitBtn = document.getElementById('authSubmitBtn');
+
+            if (mode === 'login') {
+                tabLogin.className = "flex-1 py-3.5 text-center font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition";
+                tabSignup.className = "flex-1 py-3.5 text-center font-semibold text-sm border-b-2 border-transparent text-slate-400 transition hover:text-slate-600";
+                nameField.classList.add('hidden');
+                submitBtn.innerText = 'Log In';
+            } else {
+                tabSignup.className = "flex-1 py-3.5 text-center font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition";
+                tabLogin.className = "flex-1 py-3.5 text-center font-semibold text-sm border-b-2 border-transparent text-slate-400 transition hover:text-slate-600";
+                nameField.classList.remove('hidden');
+                submitBtn.innerText = 'Sign Up';
+            }
+        }
+
+        function openConfigModal() {
+            document.getElementById('configModal').classList.remove('hidden');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.add('hidden');
+        }
+
+        function saveBackendConfig() {
+            const url = document.getElementById('webAppUrlInput').value.trim();
+            localStorage.setItem('vocab_web_app_url', url);
+            webAppUrl = url;
+            closeConfigModal();
+            location.reload();
+        }
+
+        function copyGasCode() {
+            const code = document.getElementById('gasCodeText').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('Google Apps Script code copied to clipboard!');
+        }
+
+        // Authentication Handler
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const mode = document.getElementById('authMode').value;
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+            const name = document.getElementById('authName').value.trim();
+            const errorBox = document.getElementById('authError');
+
+            errorBox.classList.add('hidden');
+
+            if (!webAppUrl) {
+                // Mock / Local Storage Auth Logic
+                if (mode === 'signup') {
+                    const existing = localData.users.find(u => u.email === email);
+                    if (existing) {
+                        errorBox.innerText = "Email already registered in local demo mode.";
+                        errorBox.classList.remove('hidden');
+                        return;
+                    }
+                    const newUser = { email, password, name: name || email.split('@')[0] };
+                    localData.users.push(newUser);
+                    localStorage.setItem('vocab_local_db', JSON.stringify(localData));
+                    currentUser = { email: newUser.email, name: newUser.name };
+                } else {
+                    const found = localData.users.find(u => u.email === email && u.password === password);
+                    if (!found) {
+                        errorBox.innerText = "Invalid credentials in demo mode. Try signing up first.";
+                        errorBox.classList.remove('hidden');
+                        return;
+                    }
+                    currentUser = { email: found.email, name: found.name };
+                }
+                localStorage.setItem('vocab_user', JSON.stringify(currentUser));
+                closeAuthModal();
+                updateAuthUI();
+                return;
+            }
+
+            // Remote Google Apps Script Auth Logic
+            try {
+                const response = await fetch(webAppUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: mode, email, password, name })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    currentUser = res.user;
+                    localStorage.setItem('vocab_user', JSON.stringify(currentUser));
+                    closeAuthModal();
+                    updateAuthUI();
+                } else {
+                    errorBox.innerText = res.message || "Authentication failed.";
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorBox.innerText = "Connection error to Google Apps Script backend.";
+                errorBox.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('vocab_user');
+            currentUser = null;
+            updateAuthUI();
+        }
+
+        // Data Loading & Dashboard Logic
+        let userVocabs = [];
+
+        async function loadUserData() {
+            if (!currentUser) return;
+
+            if (!webAppUrl) {
+                // Mock Data Mode
+                userVocabs = localData.submissions.filter(s => s.userEmail === currentUser.email);
+                renderDashboard();
+                return;
+            }
+
+            // Remote Google Sheets fetch
+            try {
+                const response = await fetch(webAppUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'getData', userEmail: currentUser.email })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    userVocabs = res.vocabs || [];
+                    renderDashboard();
+                }
+            } catch (err) {
+                console.error("Failed to load user data", err);
+            }
+        }
+
+        function renderDashboard() {
+            const todayStr = getFormattedDate();
+            const todayEntry = userVocabs.find(v => v.date === todayStr);
+
+            // 1. Update Today's Form / Lock State
+            const form = document.getElementById('vocabForm');
+            const lockedState = document.getElementById('submittedLockedState');
+            const todayStatusIcon = document.getElementById('todayStatusIcon');
+            const todayStatusText = document.getElementById('todayStatusText');
+
+            if (todayEntry) {
+                form.classList.add('hidden');
+                lockedState.classList.remove('hidden');
+                todayStatusIcon.className = "w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0";
+                todayStatusIcon.innerHTML = `<i class="fa-solid fa-circle-check"></i>`;
+                todayStatusText.innerText = "Submitted Today";
+                todayStatusText.className = "text-sm font-semibold text-emerald-600";
+            } else {
+                form.classList.remove('hidden');
+                lockedState.classList.add('hidden');
+                todayStatusIcon.className = "w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0";
+                todayStatusIcon.innerHTML = `<i class="fa-solid fa-hourglass-half"></i>`;
+                todayStatusText.innerText = "Pending Today";
+                todayStatusText.className = "text-sm font-semibold text-amber-600";
+            }
+
+            // 2. Compute Total Words
+            document.getElementById('totalWordsCount').innerText = userVocabs.length;
+
+            // 3. Compute Streak Count
+            let streak = 0;
+            let checkDate = new Date();
+            
+            // Check if submitted today, if not check yesterday to maintain streak
+            let checkStr = getFormattedDate(checkDate);
+            if (!userVocabs.some(v => v.date === checkStr)) {
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+
+            while (true) {
+                let dateStr = getFormattedDate(checkDate);
+                let exists = userVocabs.some(v => v.date === dateStr);
+                if (exists) {
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            document.getElementById('streakCount').innerText = streak;
+
+            // 4. Render Calendar Grid & History
+            renderCalendarGrid();
+            renderHistoryList();
+        }
+
+        // Render Calendar Monthly Grid
+        function renderCalendarGrid() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const todayNum = now.getDate();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDate = new Date(year, month, day);
+                const dateStr = getFormattedDate(dayDate);
+                const entry = userVocabs.find(v => v.date === dateStr);
+
+                let bgClass = "bg-slate-100 text-slate-400 border-transparent";
+                let title = `Day ${day}: No Entry`;
+
+                if (entry) {
+                    if (entry.status === "LATE") {
+                        bgClass = "bg-amber-400 text-white font-bold shadow-sm";
+                        title = `Day ${day}: Late Submission (${entry.vocab})`;
+                    } else {
+                        bgClass = "bg-emerald-500 text-white font-bold shadow-sm";
+                        title = `Day ${day}: On-Time Submission (${entry.vocab})`;
+                    }
+                } else if (day < todayNum) {
+                    bgClass = "bg-slate-200 text-slate-500";
+                    title = `Day ${day}: Missed`;
+                } else if (day === todayNum) {
+                    bgClass = "bg-indigo-50 border-2 border-indigo-500 text-indigo-600 font-bold";
+                    title = `Today`;
+                }
+
+                const dayEl = document.createElement('div');
+                dayEl.className = `p-2.5 rounded-xl text-xs flex flex-col items-center justify-center h-10 transition ${bgClass}`;
+                dayEl.title = title;
+                dayEl.innerText = day;
+                grid.appendChild(dayEl);
+            }
+        }
+
+        // Render Personal Vocabulary History
+        function renderHistoryList() {
+            const historyContainer = document.getElementById('historyList');
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('filterCategory').value;
+
+            historyContainer.innerHTML = '';
+
+            let filtered = userVocabs.filter(v => {
+                const matchesKeyword = v.vocab.toLowerCase().includes(searchKeyword) || v.sentence.toLowerCase().includes(searchKeyword);
+                const matchesCategory = categoryFilter === 'ALL' || v.category === categoryFilter;
+                return matchesKeyword && matchesCategory;
+            });
+
+            if (filtered.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 text-xs">
+                        No vocabulary entries found matching your filter.
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort newest first
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition space-y-1.5";
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-900 text-base">${item.vocab}</span>
+                            <span class="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                ${item.category}
+                            </span>
+                        </div>
+                        <span class="text-[11px] font-medium text-slate-400">${item.date}</span>
+                    </div>
+                    <p class="text-xs text-slate-600 italic">"${item.sentence}"</p>
+                `;
+                historyContainer.appendChild(card);
+            });
+        }
+
+        // Form Submit Handler
+        async function handleVocabSubmit(e) {
+            e.preventDefault();
+            const vocab = document.getElementById('vocabInput').value.trim();
+            const category = document.getElementById('categoryInput').value;
+            const sentence = document.getElementById('sentenceInput').value.trim();
+            const todayStr = getFormattedDate();
+
+            const submitBtn = document.getElementById('submitVocabBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Submitting...`;
+
+            const payload = {
+                userEmail: currentUser.email,
+                date: todayStr,
+                vocab: vocab,
+                category: category,
+                sentence: sentence,
+                isLate: false
+            };
+
+            if (!webAppUrl) {
+                // Save locally in mock mode
+                localData.submissions.push(payload);
+                localStorage.setItem('vocab_local_db', JSON.stringify(localData));
+                userVocabs.push(payload);
+                renderDashboard();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit Vocabulary`;
+                document.getElementById('vocabForm').reset();
+                return;
+            }
+
+            // Post to Google Apps Script
+            try {
+                const response = await fetch(webAppUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'addVocab', ...payload })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    userVocabs.push(payload);
+                    renderDashboard();
+                    document.getElementById('vocabForm').reset();
+                } else {
+                    alert("Submission failed: " + res.message);
+                }
+            } catch (err) {
+                alert("Error connecting to Google Sheets backend.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit Vocabulary`;
+            }
+        }
+    </script>
+</body>
+</html>
