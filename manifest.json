@@ -1,0 +1,21 @@
+{
+  "name": "BBC Daily Vocab Tracker",
+  "short_name": "BBC Vocab",
+  "description": "1 Word a Day Adult Learning Program by BBC",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#be123c",
+  "theme_color": "#be123c",
+  "icons": [
+    {
+      "src": "bbc_vocab_tracker_logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "bbc_vocab_tracker_logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
