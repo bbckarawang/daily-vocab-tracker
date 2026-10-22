@@ -1,10 +1,11 @@
 {
   "name": "BBC Daily Vocab Tracker",
   "short_name": "BBC Vocab",
-  "description": "1 Word a Day Adult Learning Program by BBC",
+  "description": "Build Better Communication - Daily Vocabulary Tracker",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#be123c",
+  "background_color": "#ffffff",
   "theme_color": "#be123c",
   "icons": [
     {
