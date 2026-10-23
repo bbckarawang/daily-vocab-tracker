@@ -3,8 +3,8 @@
   "name": "BBC Daily Vocab Tracker",
   "short_name": "BBC Vocab",
   "description": "Build Better Communication - Daily Vocabulary Tracker",
-  "start_url": "/daily-vocab-tracker/index.html",
-  "scope": "/daily-vocab-tracker/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
@@ -12,15 +12,15 @@
   "icons": [
     {
       "src": "bbc_vocab_tracker_logo.png",
-      "sizes": "192x192",
+      "sizes": "500x500",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "bbc_vocab_tracker_logo.png",
-      "sizes": "512x512",
+      "sizes": "500x500",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
