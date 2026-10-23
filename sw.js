@@ -1,18 +1,16 @@
-const CACHE_NAME = 'bbc-vocab-cache-v2';
+const CACHE_NAME = 'bbc-vocab-v1';
 const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './bbc_vocab_tracker_logo.png',
-  './bbc_logo.png',
-  './bbc_vocab_tracker_pavicon.ico'
+  '/daily-vocab-tracker/',
+  '/daily-vocab-tracker/index.html',
+  '/daily-vocab-tracker/manifest.json',
+  '/daily-vocab-tracker/bbc_vocab_tracker_logo.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(urlsToCache);
+    }).then(() => self.skipWaiting())
   );
 });
 
