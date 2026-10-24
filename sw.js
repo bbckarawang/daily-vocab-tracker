@@ -1,16 +1,15 @@
-const CACHE_NAME = 'bbc-vocab-v1';
+const CACHE_NAME = 'bbc-vocab-v2'; // Ubah versi cache di sini
 const urlsToCache = [
-  '/daily-vocab-tracker/',
-  '/daily-vocab-tracker/index.html',
-  '/daily-vocab-tracker/manifest.json',
-  '/daily-vocab-tracker/bbc_vocab_tracker_logo.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './bbc_vocab_tracker_logo.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -30,8 +29,6 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
+    caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
