@@ -74,13 +74,39 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             <div class="lg:col-span-4 space-y-4">
-                <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-                        <span>Daftar Siswa</span>
+                <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-users text-bbc-600"></i>
+                            <span>Daftar Siswa</span>
+                        </h2>
                         <span id="studentCountBadge" class="bg-rose-100 text-bbc-700 font-extrabold px-2 py-0.5 rounded-full text-[10px]">0</span>
-                    </h2>
+                    </div>
                     
-                    <div id="studentListContainer" class="space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Search, Filter Kelas & Sorting -->
+                    <div class="space-y-2">
+                        <div class="relative">
+                            <input type="text" id="searchStudentInput" oninput="renderStudentList()" placeholder="Cari nama atau email..." 
+                                class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-bbc-600">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <!-- Filter Berdasarkan Kelas (Kolom G) -->
+                            <select id="filterClassSelect" onchange="renderStudentList()" class="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none bg-white font-medium text-slate-700">
+                                <option value="ALL">Semua Kelas</option>
+                            </select>
+
+                            <!-- Urutkan Berdasarkan Aktivitas/Nama -->
+                            <select id="sortStudentSelect" onchange="renderStudentList()" class="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none bg-white font-medium text-slate-700">
+                                <option value="LATEST_SUBMIT">Terakhir Submit</option>
+                                <option value="NAME_AZ">Nama (A - Z)</option>
+                                <option value="MOST_VOCAB">Total Kata</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="studentListContainer" class="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1 pt-1">
                         <div class="p-4 text-center text-xs text-slate-400">Memuat data siswa...</div>
                     </div>
                 </div>
@@ -97,9 +123,14 @@
 
                 <div id="studentDetailPanel" class="hidden space-y-6">
                     <div class="bg-white rounded-2xl border border-rose-100 p-6 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <div>
-                                <h3 id="selectedStudentName" class="font-extrabold text-slate-900 text-lg">Nama Siswa</h3>
+                                <div class="flex items-center gap-2">
+                                    <h3 id="selectedStudentName" class="font-extrabold text-slate-900 text-lg">Nama Siswa</h3>
+                                    <span id="selectedStudentClassBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                        Unassigned
+                                    </span>
+                                </div>
                                 <p id="selectedStudentEmail" class="text-xs text-slate-400">email@siswa.com</p>
                             </div>
                             <span class="bg-rose-50 text-bbc-700 text-xs font-bold px-3 py-1 rounded-full border border-rose-100">Feedback Coach</span>
@@ -208,15 +239,7 @@
                 
                 if (res.status === 'success') {
                     studentsData = res.students || [];
-
-                    // Mengurutkan siswa dari A hingga Z berdasarkan Nama
-                    studentsData.sort((a, b) => {
-                        const nameA = (a.name || '').toLowerCase();
-                        const nameB = (b.name || '').toLowerCase();
-                        return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
-                    });
-
-                    document.getElementById('studentCountBadge').innerText = studentsData.length;
+                    populateClassDropdown();
                     renderStudentList();
                     if (currentSelectedEmail) selectStudent(currentSelectedEmail);
                 } else {
@@ -227,18 +250,68 @@
             }
         }
 
+        function populateClassDropdown() {
+            const classSelect = document.getElementById('filterClassSelect');
+            const currentSelected = classSelect.value;
+            classSelect.innerHTML = `<option value="ALL">Semua Kelas</option>`;
+
+            const classesSet = new Set();
+            studentsData.forEach(s => {
+                if (s.className && s.className.trim() !== '') {
+                    classesSet.add(s.className.trim());
+                }
+            });
+
+            Array.from(classesSet).sort().forEach(cls => {
+                const opt = document.createElement('option');
+                opt.value = cls;
+                opt.innerText = cls;
+                classSelect.appendChild(opt);
+            });
+
+            if (Array.from(classesSet).includes(currentSelected)) {
+                classSelect.value = currentSelected;
+            }
+        }
+
         function renderStudentList() {
             const container = document.getElementById('studentListContainer');
+            const searchKeyword = document.getElementById('searchStudentInput').value.toLowerCase().trim();
+            const filterClass = document.getElementById('filterClassSelect').value;
+            const sortMode = document.getElementById('sortStudentSelect').value;
+
             container.innerHTML = '';
 
-            if (studentsData.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">Belum ada siswa terdaftar.</div>`;
+            // 1. Filter Data
+            let filtered = studentsData.filter(student => {
+                const matchesKeyword = (student.name || '').toLowerCase().includes(searchKeyword) || (student.email || '').toLowerCase().includes(searchKeyword);
+                const matchesClass = (filterClass === 'ALL') || (student.className && student.className.trim() === filterClass);
+                return matchesKeyword && matchesClass;
+            });
+
+            // 2. Sort Data
+            filtered.sort((a, b) => {
+                if (sortMode === 'LATEST_SUBMIT') {
+                    return (b.latestSubmissionTime || 0) - (a.latestSubmissionTime || 0);
+                } else if (sortMode === 'NAME_AZ') {
+                    return (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' });
+                } else if (sortMode === 'MOST_VOCAB') {
+                    return (b.vocabs || []).length - (a.vocabs || []).length;
+                }
+                return 0;
+            });
+
+            document.getElementById('studentCountBadge').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">Tidak ada siswa ditemukan.</div>`;
                 return;
             }
 
-            studentsData.forEach(student => {
+            filtered.forEach(student => {
                 const card = document.createElement('div');
                 const isSelected = student.email === currentSelectedEmail;
+                const hasClass = student.className && student.className.trim() !== '';
                 
                 card.className = `p-3 rounded-xl border text-left cursor-pointer transition flex items-center justify-between ${
                     isSelected ? 'border-bbc-600 bg-rose-50 shadow-sm' : 'border-slate-100 bg-slate-50/50 hover:bg-slate-100'
@@ -247,11 +320,14 @@
                 card.onclick = () => selectStudent(student.email);
                 
                 card.innerHTML = `
-                    <div>
-                        <div class="font-bold text-slate-900 text-xs">${student.name}</div>
+                    <div class="space-y-0.5">
+                        <div class="font-bold text-slate-900 text-xs flex items-center gap-1.5 flex-wrap">
+                            <span>${student.name}</span>
+                            ${hasClass ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-100 text-bbc-700 font-extrabold">${student.className}</span>` : ''}
+                        </div>
                         <div class="text-[10px] text-slate-400">${student.email}</div>
                     </div>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 shrink-0">
                         ${student.vocabs.length} Kata
                     </span>
                 `;
@@ -271,6 +347,16 @@
 
             document.getElementById('selectedStudentName').innerText = student.name;
             document.getElementById('selectedStudentEmail').innerText = student.email;
+            
+            const classBadge = document.getElementById('selectedStudentClassBadge');
+            if (student.className && student.className.trim() !== '') {
+                classBadge.innerText = `Kelas: ${student.className}`;
+                classBadge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-bbc-700 border border-rose-200";
+            } else {
+                classBadge.innerText = "Belum Ada Kelas";
+                classBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200";
+            }
+
             document.getElementById('coachFeedbackInput').value = student.feedback || '';
             document.getElementById('studentVocabCount').innerText = `${student.vocabs.length} Submission`;
 
@@ -293,10 +379,7 @@
                 const vCard = document.createElement('div');
                 vCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-2";
                 
-                // Format Pengucapan (Pronunciation) dari Kolom I diapit tanda /
-                const pronText = item.pronunciation ? `<span class="text-xs font-normal text-slate-400">/ ${item.pronunciation} /</span>` : '';
-                
-                // Format Arti/Makna Kosakata dari Kolom H
+                const pronText = item.pronunciation ? `<span class="text-xs font-normal text-slate-400">/ ${item.pronunciation.replace(/^\/|\/$/g, '').trim()} /</span>` : '';
                 const meaningText = item.meaning ? `<div class="text-xs font-bold text-bbc-700 flex items-center gap-1">💡 Arti: ${item.meaning}</div>` : '';
 
                 vCard.innerHTML = `
