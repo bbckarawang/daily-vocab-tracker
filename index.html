@@ -55,6 +55,19 @@
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col selection:bg-bbc-600 selection:text-white relative">
 
+    <!-- Toast Notification Container -->
+    <div id="toastNotification" class="fixed top-5 right-5 z-50 transform translate-x-full opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toastContent" class="flex items-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 min-w-[280px]">
+            <div id="toastIcon" class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-circle-check text-base"></i>
+            </div>
+            <div>
+                <div id="toastTitle" class="font-bold text-xs text-white">Berhasil!</div>
+                <div id="toastMessage" class="text-[11px] text-slate-300">Data berhasil disimpan.</div>
+            </div>
+        </div>
+    </div>
+
     <!-- ANIMASI SPLASH / LOADING SCREEN -->
     <div id="appSplashScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-bbc-900 via-bbc-800 to-bbc-700 flex flex-col items-center justify-center text-white transition-opacity duration-500">
         <div class="relative flex flex-col items-center">
@@ -252,14 +265,9 @@
                         </form>
                     </div>
 
-                    <!-- Coach Feedback Box -->
-                    <div class="bg-gradient-to-br from-bbc-900 to-bbc-800 text-white rounded-2xl p-5 shadow-sm border border-bbc-700">
-                        <div class="flex items-center gap-2 text-rose-200 font-extrabold text-[10px] tracking-wider uppercase mb-2">
-                            <i class="fa-solid fa-comment-dots text-rose-300"></i> Coach Feedback
-                        </div>
-                        <p id="teacherFeedbackText" class="text-xs text-rose-50 italic leading-relaxed">
-                            "Fetching feedback from coach..."
-                        </p>
+                    <!-- Coach Feedback Box (Dapat Buka Pesan) -->
+                    <div id="coachFeedbackContainer" class="bg-gradient-to-br from-bbc-900 via-bbc-800 to-bbc-700 text-white rounded-2xl p-5 shadow-md border border-bbc-600 relative overflow-hidden transition-all duration-300">
+                        <!-- Populated dynamically via JS -->
                     </div>
                 </div>
 
@@ -336,11 +344,35 @@
 
         let currentUser = JSON.parse(localStorage.getItem('bbc_vocab_user')) || null;
         let userVocabs = [];
+        let rawCoachFeedback = "";
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Registration Failed', err));
             });
+        }
+
+        function showToast(title, message, isSuccess = true) {
+            const toast = document.getElementById('toastNotification');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastTitle.innerText = title;
+            toastMessage.innerText = message;
+
+            if (isSuccess) {
+                toastIcon.className = "w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0";
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-check text-base"></i>`;
+            } else {
+                toastIcon.className = "w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0";
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-xmark text-base"></i>`;
+            }
+
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3500);
         }
 
         function hideSplashScreen() {
@@ -515,12 +547,58 @@
                 const res = await response.json();
                 if (res.status === 'success') {
                     userVocabs = res.vocabs || [];
-                    document.getElementById('teacherFeedbackText').innerText = `"${res.feedback || 'Keep up the great effort every day!'}"`;
+                    rawCoachFeedback = res.feedback || 'Keep up the great effort every day!';
+                    renderCoachFeedbackBox();
                     renderDashboard();
                 }
             } catch (err) {
                 console.error("Failed to load user data", err);
             }
+        }
+
+        // --- MANAJEMEN KOTAK PESAN COACH ---
+        function renderCoachFeedbackBox() {
+            const container = document.getElementById('coachFeedbackContainer');
+            const lastOpenedFeedback = localStorage.getItem(`opened_feedback_${currentUser.email}`);
+
+            // Cek apakah ada pesan baru dari Coach
+            const isNewMessage = lastOpenedFeedback !== rawCoachFeedback;
+
+            if (isNewMessage) {
+                // TAMPILAN PESAN BARU (MASIH TERKUNCI / UNREAD)
+                container.innerHTML = `
+                    <div class="flex flex-col items-center text-center space-y-3 py-2">
+                        <div class="flex items-center gap-2 text-rose-200 font-extrabold text-xs tracking-wider uppercase">
+                            <span class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-300"></span>
+                            </span>
+                            Pesan Baru dari Coach!
+                        </div>
+                        <p class="text-xs text-rose-100 opacity-90">Coach memberikan masukan / apresiasi untuk tugas terbarumu.</p>
+                        <button onclick="openCoachMessage()" class="px-5 py-2.5 bg-white text-bbc-800 hover:bg-rose-50 font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-2 transform active:scale-95">
+                            <i class="fa-solid fa-envelope-open text-bbc-700"></i> Buka Pesan Coach
+                        </button>
+                    </div>
+                `;
+            } else {
+                // TAMPILAN PESAN SUDAH DIBUKA (READ / TERBUKA SETERUSNYA)
+                container.innerHTML = `
+                    <div class="flex items-center justify-between text-rose-200 font-extrabold text-[10px] tracking-wider uppercase mb-2">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-comment-dots text-rose-300"></i> Coach Feedback</span>
+                        <span class="text-[9px] bg-white/10 px-2 py-0.5 rounded-full text-rose-200 font-medium">Terbaca</span>
+                    </div>
+                    <p class="text-xs text-rose-50 italic leading-relaxed font-medium">
+                        "${rawCoachFeedback}"
+                    </p>
+                `;
+            }
+        }
+
+        function openCoachMessage() {
+            localStorage.setItem(`opened_feedback_${currentUser.email}`, rawCoachFeedback);
+            renderCoachFeedbackBox();
+            showToast("Pesan Terbuka", "Silakan baca masukan dari Coach dan koreksi kalimatmu jika diperlukan.");
         }
 
         function renderDashboard() {
@@ -642,30 +720,139 @@
                 return timeB - timeA;
             });
 
-            filtered.forEach(item => {
-                const card = document.createElement('div');
-                card.className = "p-3.5 rounded-xl border border-rose-100 bg-rose-50/30 space-y-1";
-                
-                // Format Pronunciation dengan garis miring otomatis
-                let pronHtml = item.pronunciation ? `<span class="text-xs text-slate-400 font-normal ml-1">/ ${item.pronunciation.replace(/^\/|\/$/g, '').trim()} /</span>` : '';
-                let meaningHtml = item.meaning ? `<div class="text-xs font-semibold text-rose-800">💡 Arti: ${item.meaning}</div>` : '';
+            // Cari entri paling baru dari keseluruhan userVocabs untuk tombol Edit Khusus
+            let newestTimestamp = 0;
+            userVocabs.forEach(v => {
+                let t = v.timestamp || new Date(cleanDateStr(v.date)).getTime();
+                if (t > newestTimestamp) newestTimestamp = t;
+            });
 
-                card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-bold text-slate-900 text-sm">${item.vocab}</span>
-                            ${pronHtml}
-                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-bbc-700">
-                                ${item.category}
-                            </span>
-                        </div>
-                        <span class="text-[10px] font-medium text-slate-400">${formatDisplayDateTime(item)}</span>
-                    </div>
-                    ${meaningHtml}
-                    <p class="text-xs text-slate-600 italic">"${item.sentence}"</p>
-                `;
+            filtered.forEach((item, idx) => {
+                const card = document.createElement('div');
+                const cardId = `user-history-card-${idx}`;
+                card.id = cardId;
+                
+                let itemTime = item.timestamp || new Date(cleanDateStr(item.date)).getTime();
+                let isLatestEntry = (itemTime === newestTimestamp);
+
+                card.className = isLatestEntry 
+                    ? "p-3.5 rounded-xl border-2 border-bbc-600 bg-rose-50/50 space-y-1 transition"
+                    : "p-3.5 rounded-xl border border-rose-100 bg-rose-50/30 space-y-1 transition";
+
+                renderStudentHistoryCardView(card, item, isLatestEntry);
                 historyContainer.appendChild(card);
             });
+        }
+
+        function renderStudentHistoryCardView(cardEl, item, isLatestEntry) {
+            let pronHtml = item.pronunciation ? `<span class="text-xs text-slate-400 font-normal ml-1">/ ${item.pronunciation.replace(/^\/|\/$/g, '').trim()} /</span>` : '';
+            let meaningHtml = item.meaning ? `<div class="text-xs font-semibold text-rose-800">💡 Arti: ${item.meaning}</div>` : '';
+
+            // Tombol edit hanya tampil pada entri terbaru
+            let editButtonHtml = isLatestEntry ? `
+                <button onclick='enableStudentEdit("${cardEl.id}", ${JSON.stringify(item)})' class="w-7 h-7 rounded-lg bg-white border border-rose-200 text-bbc-700 hover:bg-bbc-700 hover:text-white flex items-center justify-center transition shadow-sm ml-1" title="Koreksi Kalimat Terbarumu">
+                    <i class="fa-solid fa-pen text-[10px]"></i>
+                </button>
+            ` : '';
+
+            cardEl.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-slate-900 text-sm">${item.vocab}</span>
+                        ${pronHtml}
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-bbc-700">
+                            ${item.category}
+                        </span>
+                        ${isLatestEntry ? `<span class="text-[8px] font-black px-1.5 py-0.2 rounded bg-bbc-700 text-white uppercase">Latest</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-medium text-slate-400">${formatDisplayDateTime(item)}</span>
+                        ${editButtonHtml}
+                    </div>
+                </div>
+                ${meaningHtml}
+                <p class="text-xs text-slate-600 italic">"${item.sentence}"</p>
+            `;
+        }
+
+        // Tampilan Form Edit untuk Siswa pada Entri Terbarunya
+        function enableStudentEdit(cardId, item) {
+            const cardEl = document.getElementById(cardId);
+            
+            cardEl.innerHTML = `
+                <div class="flex items-center justify-between border-b border-rose-200 pb-2">
+                    <span class="font-extrabold text-bbc-800 text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square"></i> Koreksi Kalimat Terbarumu: ${item.vocab}
+                    </span>
+                    <span class="text-[10px] font-bold text-slate-400">${item.date}</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Arti (Meaning):</label>
+                        <input type="text" id="studentEditMeaning-${cardId}" value="${item.meaning || ''}" 
+                            class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Cara Baca (Pronunciation):</label>
+                        <input type="text" id="studentEditPron-${cardId}" value="${item.pronunciation || ''}" 
+                            class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
+                    </div>
+                </div>
+
+                <div class="pt-1">
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Kalimat Terkoreksi (Sentence):</label>
+                    <textarea id="studentEditSentence-${cardId}" rows="2" 
+                        class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white custom-scrollbar">${item.sentence || ''}</textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-1">
+                    <button onclick='renderStudentHistoryCardView(document.getElementById("${cardId}"), ${JSON.stringify(item)}, true)' 
+                        class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition">
+                        Batal
+                    </button>
+                    <button onclick='saveStudentEdit("${cardId}", "${item.vocab}", "${item.date}")' 
+                        class="px-3.5 py-1.5 bg-bbc-700 hover:bg-bbc-800 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i> Update Kalimat
+                    </button>
+                </div>
+            `;
+        }
+
+        async function saveStudentEdit(cardId, vocab, date) {
+            const newMeaning = document.getElementById(`studentEditMeaning-${cardId}`).value.trim();
+            const newPron = document.getElementById(`studentEditPron-${cardId}`).value.trim();
+            const newSentence = document.getElementById(`studentEditSentence-${cardId}`).value.trim();
+
+            const cardEl = document.getElementById(cardId);
+            cardEl.style.opacity = "0.5";
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'updateVocabItem',
+                        studentEmail: currentUser.email,
+                        vocab: vocab,
+                        date: date,
+                        meaning: newMeaning,
+                        pronunciation: newPron,
+                        sentence: newSentence
+                    })
+                });
+                const res = await response.json();
+
+                if (res.status === 'success') {
+                    showToast("Kalimat Diperbarui!", "Tugas terbarumu berhasil dikoreksi.");
+                    await loadUserData();
+                } else {
+                    showToast("Gagal Memperbarui", res.message || "Terjadi kesalahan.", false);
+                    cardEl.style.opacity = "1";
+                }
+            } catch (err) {
+                showToast("Koneksi Terputus", "Gagal menghubungkan ke server.", false);
+                cardEl.style.opacity = "1";
+            }
         }
 
         async function handleVocabSubmit(e) {
@@ -699,6 +886,7 @@
                 });
                 const res = await response.json();
                 if (res.status === 'success') {
+                    showToast("Berhasil Submit!", "Kosakata harimu telah disimpan.");
                     await loadUserData();
                     document.getElementById('vocabForm').reset();
                 } else {
