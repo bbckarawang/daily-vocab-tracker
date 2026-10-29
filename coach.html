@@ -282,14 +282,12 @@
 
             container.innerHTML = '';
 
-            // 1. Filter Data
             let filtered = studentsData.filter(student => {
                 const matchesKeyword = (student.name || '').toLowerCase().includes(searchKeyword) || (student.email || '').toLowerCase().includes(searchKeyword);
                 const matchesClass = (filterClass === 'ALL') || (student.className && student.className.trim() === filterClass);
                 return matchesKeyword && matchesClass;
             });
 
-            // 2. Sort Data
             filtered.sort((a, b) => {
                 if (sortMode === 'LATEST_SUBMIT') {
                     return (b.latestSubmissionTime || 0) - (a.latestSubmissionTime || 0);
@@ -360,6 +358,10 @@
             document.getElementById('coachFeedbackInput').value = student.feedback || '';
             document.getElementById('studentVocabCount').innerText = `${student.vocabs.length} Submission`;
 
+            renderStudentVocabList(student);
+        }
+
+        function renderStudentVocabList(student) {
             const vocabContainer = document.getElementById('studentVocabList');
             vocabContainer.innerHTML = '';
 
@@ -368,36 +370,146 @@
                 return;
             }
 
-            // Urutkan submission terbaru di paling atas
             const sortedVocabs = [...student.vocabs].sort((a,b) => {
                 let timeA = a.timestamp || new Date(cleanDateStr(a.date)).getTime();
                 let timeB = b.timestamp || new Date(cleanDateStr(b.date)).getTime();
                 return timeB - timeA;
             });
 
-            sortedVocabs.forEach(item => {
+            sortedVocabs.forEach((item, index) => {
+                const cardId = `vocab-card-${index}`;
                 const vCard = document.createElement('div');
-                vCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-2";
+                vCard.id = cardId;
+                vCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-2 transition";
                 
-                const pronText = item.pronunciation ? `<span class="text-xs font-normal text-slate-400">/ ${item.pronunciation.replace(/^\/|\/$/g, '').trim()} /</span>` : '';
-                const meaningText = item.meaning ? `<div class="text-xs font-bold text-bbc-700 flex items-center gap-1">💡 Arti: ${item.meaning}</div>` : '';
-
-                vCard.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-bold text-slate-900 text-sm">${item.vocab}</span>
-                            ${pronText}
-                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-bbc-700">
-                                ${item.category}
-                            </span>
-                        </div>
-                        <span class="text-[10px] font-medium text-slate-400 shrink-0">${formatDisplayDateTime(item)}</span>
-                    </div>
-                    ${meaningText}
-                    <p class="text-xs text-slate-700 font-medium italic">"${item.sentence}"</p>
-                `;
+                renderCardView(vCard, item, student.email);
                 vocabContainer.appendChild(vCard);
             });
+        }
+
+        // Tampilan Mode Baca
+        function renderCardView(vCard, item, studentEmail) {
+            const pronText = item.pronunciation ? `<span class="text-xs font-normal text-slate-400">/ ${item.pronunciation.replace(/^\/|\/$/g, '').trim()} /</span>` : '';
+            const meaningText = item.meaning ? `<div class="text-xs font-bold text-bbc-700 flex items-center gap-1">💡 Arti: ${item.meaning}</div>` : '';
+
+            vCard.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-slate-900 text-sm">${item.vocab}</span>
+                        ${pronText}
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-bbc-700">
+                            ${item.category}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-medium text-slate-400 shrink-0">${formatDisplayDateTime(item)}</span>
+                        <button onclick='enableEditCard("${vCard.id}", ${JSON.stringify(item)}, "${studentEmail}")' 
+                            class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-bbc-700 hover:border-bbc-300 flex items-center justify-center transition shadow-sm" 
+                            title="Edit Submission Ini">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+                ${meaningText}
+                <p class="text-xs text-slate-700 font-medium italic">"${item.sentence}"</p>
+            `;
+        }
+
+        // Tampilan Mode Edit Inline
+        function enableEditCard(cardId, item, studentEmail) {
+            const vCard = document.getElementById(cardId);
+            vCard.className = "p-4 rounded-xl border-2 border-bbc-600 bg-rose-50/50 space-y-3 transition";
+
+            vCard.innerHTML = `
+                <div class="flex items-center justify-between border-b border-rose-100 pb-2">
+                    <span class="font-extrabold text-bbc-800 text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit Entry: ${item.vocab}
+                    </span>
+                    <span class="text-[10px] font-bold text-slate-400">${item.date}</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Arti (Meaning):</label>
+                        <input type="text" id="editMeaning-${cardId}" value="${item.meaning || ''}" placeholder="misal: Tepat" 
+                            class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Cara Baca (Pronunciation):</label>
+                        <input type="text" id="editPron-${cardId}" value="${item.pronunciation || ''}" placeholder="misal: ig-zakt-lee" 
+                            class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Kalimat (Sentence):</label>
+                    <textarea id="editSentence-${cardId}" rows="2" 
+                        class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white custom-scrollbar">${item.sentence || ''}</textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-1">
+                    <button onclick='cancelEditCard("${cardId}", ${JSON.stringify(item)}, "${studentEmail}")' 
+                        class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition">
+                        Batal
+                    </button>
+                    <button onclick='saveEditCard("${cardId}", "${item.vocab}", "${item.date}", "${studentEmail}")' 
+                        class="px-3.5 py-1.5 bg-bbc-700 hover:bg-bbc-800 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i> Simpan
+                    </button>
+                </div>
+            `;
+        }
+
+        function cancelEditCard(cardId, item, studentEmail) {
+            const vCard = document.getElementById(cardId);
+            vCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-2 transition";
+            renderCardView(vCard, item, studentEmail);
+        }
+
+        async function saveEditCard(cardId, vocab, date, studentEmail) {
+            const newMeaning = document.getElementById(`editMeaning-${cardId}`).value.trim();
+            const newPron = document.getElementById(`editPron-${cardId}`).value.trim();
+            const newSentence = document.getElementById(`editSentence-${cardId}`).value.trim();
+
+            const vCard = document.getElementById(cardId);
+            vCard.style.opacity = "0.5";
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'updateVocabItem',
+                        studentEmail: studentEmail,
+                        vocab: vocab,
+                        date: date,
+                        meaning: newMeaning,
+                        pronunciation: newPron,
+                        sentence: newSentence
+                    })
+                });
+                const res = await response.json();
+
+                if (res.status === 'success') {
+                    // Update data lokal
+                    const student = studentsData.find(s => s.email === studentEmail);
+                    if (student) {
+                        const targetItem = student.vocabs.find(v => v.vocab === vocab && v.date === date);
+                        if (targetItem) {
+                            targetItem.meaning = newMeaning;
+                            targetItem.pronunciation = newPron;
+                            targetItem.sentence = newSentence;
+                        }
+                    }
+                    showToast("Berhasil Dikonfirmasi!", "Entry kosakata siswa telah diperbarui.");
+                    selectStudent(studentEmail);
+                } else {
+                    showToast("Gagal Memperbarui", res.message || "Terjadi kesalahan.", false);
+                    vCard.style.opacity = "1";
+                }
+            } catch (err) {
+                showToast("Koneksi Terputus", "Gagal memperbarui data ke spreadsheet.", false);
+                vCard.style.opacity = "1";
+            }
         }
 
         async function saveCoachFeedback() {
