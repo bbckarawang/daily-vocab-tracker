@@ -382,13 +382,13 @@
                 vCard.id = cardId;
                 vCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-2 transition";
                 
-                renderCardView(vCard, item, student.email);
+                renderCardView(vCard, item, student.email, index);
                 vocabContainer.appendChild(vCard);
             });
         }
 
         // Tampilan Mode Baca
-        function renderCardView(vCard, item, studentEmail) {
+        function renderCardView(vCard, item, studentEmail, index) {
             const pronText = item.pronunciation ? `<span class="text-xs font-normal text-slate-400">/ ${item.pronunciation.replace(/^\/|\/$/g, '').trim()} /</span>` : '';
             const meaningText = item.meaning ? `<div class="text-xs font-bold text-bbc-700 flex items-center gap-1">💡 Arti: ${item.meaning}</div>` : '';
 
@@ -403,8 +403,8 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-[10px] font-medium text-slate-400 shrink-0">${formatDisplayDateTime(item)}</span>
-                        <button onclick='enableEditCard("${vCard.id}", ${JSON.stringify(item)}, "${studentEmail}")' 
-                            class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-bbc-700 hover:border-bbc-300 flex items-center justify-center transition shadow-sm" 
+                        <button onclick="enableEditCardByIndex('${vCard.id}', ${index}, '${studentEmail}')" 
+                            class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-bbc-700 hover:border-bbc-300 flex items-center justify-center transition shadow-sm cursor-pointer" 
                             title="Edit Submission Ini">
                             <i class="fa-solid fa-pen text-[10px]"></i>
                         </button>
@@ -415,28 +415,45 @@
             `;
         }
 
-        // Tampilan Mode Edit Inline
-        function enableEditCard(cardId, item, studentEmail) {
+        // Mengaktifkan Mode Edit menggunakan Index secara Aman
+        function enableEditCardByIndex(cardId, index, studentEmail) {
+            const student = studentsData.find(s => s.email === studentEmail);
+            if (!student || !student.vocabs[index]) return;
+
+            const sortedVocabs = [...student.vocabs].sort((a,b) => {
+                let timeA = a.timestamp || new Date(cleanDateStr(a.date)).getTime();
+                let timeB = b.timestamp || new Date(cleanDateStr(b.date)).getTime();
+                return timeB - timeA;
+            });
+
+            const item = sortedVocabs[index];
             const vCard = document.getElementById(cardId);
             vCard.className = "p-4 rounded-xl border-2 border-bbc-600 bg-rose-50/50 space-y-3 transition";
 
             vCard.innerHTML = `
                 <div class="flex items-center justify-between border-b border-rose-100 pb-2">
                     <span class="font-extrabold text-bbc-800 text-xs flex items-center gap-1.5">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit Entry: ${item.vocab}
+                        <i class="fa-solid fa-pen-to-square"></i> Edit Entry Kosakata Siswa
                     </span>
                     <span class="text-[10px] font-bold text-slate-400">${item.date}</span>
+                </div>
+
+                <!-- DITAMBAHKAN INPUT KOSAKATA UTAMA (VOCAB - KOLOM C) -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Kosakata Utama (Vocab - Kolom C):</label>
+                    <input type="text" id="editVocab-${cardId}" value="${item.vocab || ''}" placeholder="misal: medicine" 
+                        class="w-full px-2.5 py-1.5 text-xs font-bold text-bbc-800 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Arti (Meaning):</label>
-                        <input type="text" id="editMeaning-${cardId}" value="${item.meaning || ''}" placeholder="misal: Tepat" 
+                        <input type="text" id="editMeaning-${cardId}" value="${item.meaning || ''}" placeholder="misal: obat" 
                             class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Cara Baca (Pronunciation):</label>
-                        <input type="text" id="editPron-${cardId}" value="${item.pronunciation || ''}" placeholder="misal: ig-zakt-lee" 
+                        <input type="text" id="editPron-${cardId}" value="${item.pronunciation || ''}" placeholder="misal: medisien" 
                             class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-bbc-600 bg-white">
                     </div>
                 </div>
@@ -448,25 +465,46 @@
                 </div>
 
                 <div class="flex items-center justify-end gap-2 pt-1">
-                    <button onclick='cancelEditCard("${cardId}", ${JSON.stringify(item)}, "${studentEmail}")' 
-                        class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition">
+                    <button onclick="cancelEditCardByIndex('${cardId}', ${index}, '${studentEmail}')" 
+                        class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer">
                         Batal
                     </button>
-                    <button onclick='saveEditCard("${cardId}", "${item.vocab}", "${item.date}", "${studentEmail}")' 
-                        class="px-3.5 py-1.5 bg-bbc-700 hover:bg-bbc-800 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1.5">
+                    <button onclick="saveEditCardByIndex('${cardId}', ${index}, '${studentEmail}')" 
+                        class="px-3.5 py-1.5 bg-bbc-700 hover:bg-bbc-800 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1.5 cursor-pointer">
                         <i class="fa-solid fa-check"></i> Simpan
                     </button>
                 </div>
             `;
         }
 
-        function cancelEditCard(cardId, item, studentEmail) {
+        function cancelEditCardByIndex(cardId, index, studentEmail) {
+            const student = studentsData.find(s => s.email === studentEmail);
+            if (!student) return;
+
+            const sortedVocabs = [...student.vocabs].sort((a,b) => {
+                let timeA = a.timestamp || new Date(cleanDateStr(a.date)).getTime();
+                let timeB = b.timestamp || new Date(cleanDateStr(b.date)).getTime();
+                return timeB - timeA;
+            });
+
+            const item = sortedVocabs[index];
             const vCard = document.getElementById(cardId);
             vCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-2 transition";
-            renderCardView(vCard, item, studentEmail);
+            renderCardView(vCard, item, studentEmail, index);
         }
 
-        async function saveEditCard(cardId, vocab, date, studentEmail) {
+        async function saveEditCardByIndex(cardId, index, studentEmail) {
+            const student = studentsData.find(s => s.email === studentEmail);
+            if (!student) return;
+
+            const sortedVocabs = [...student.vocabs].sort((a,b) => {
+                let timeA = a.timestamp || new Date(cleanDateStr(a.date)).getTime();
+                let timeB = b.timestamp || new Date(cleanDateStr(b.date)).getTime();
+                return timeB - timeA;
+            });
+
+            const oldItem = sortedVocabs[index];
+            const newVocab = document.getElementById(`editVocab-${cardId}`).value.trim();
             const newMeaning = document.getElementById(`editMeaning-${cardId}`).value.trim();
             const newPron = document.getElementById(`editPron-${cardId}`).value.trim();
             const newSentence = document.getElementById(`editSentence-${cardId}`).value.trim();
@@ -480,8 +518,9 @@
                     body: JSON.stringify({
                         action: 'updateVocabItem',
                         studentEmail: studentEmail,
-                        vocab: vocab,
-                        date: date,
+                        oldVocab: oldItem.vocab, // Digunakan untuk mencari baris lama di Sheet
+                        vocab: newVocab,        // Vocab baru (Kolom C)
+                        date: oldItem.date,
                         meaning: newMeaning,
                         pronunciation: newPron,
                         sentence: newSentence
@@ -491,15 +530,11 @@
 
                 if (res.status === 'success') {
                     // Update data lokal
-                    const student = studentsData.find(s => s.email === studentEmail);
-                    if (student) {
-                        const targetItem = student.vocabs.find(v => v.vocab === vocab && v.date === date);
-                        if (targetItem) {
-                            targetItem.meaning = newMeaning;
-                            targetItem.pronunciation = newPron;
-                            targetItem.sentence = newSentence;
-                        }
-                    }
+                    oldItem.vocab = newVocab;
+                    oldItem.meaning = newMeaning;
+                    oldItem.pronunciation = newPron;
+                    oldItem.sentence = newSentence;
+
                     showToast("Berhasil Dikonfirmasi!", "Entry kosakata siswa telah diperbarui.");
                     selectStudent(studentEmail);
                 } else {
